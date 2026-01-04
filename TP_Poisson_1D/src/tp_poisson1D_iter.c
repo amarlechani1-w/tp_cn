@@ -81,6 +81,7 @@ int main(int argc,char *argv[])
   
   /* Allocate and initialize coefficient matrix */
   AB = (double *) malloc(sizeof(double)*lab*la);
+
   set_GB_operator_colMajor_poisson1D(AB, &lab, &la, &kv);
   
   /* uncomment the following to check matrix A */

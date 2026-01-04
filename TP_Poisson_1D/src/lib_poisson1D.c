@@ -6,89 +6,81 @@
 #include "lib_poisson1D.h"
 
 void set_GB_operator_colMajor_poisson1D(double* AB, int *lab, int *la, int *kv){
-  // TODO: Fill AB with the tridiagonal Poisson operator
-  for (int i = 0; i < *la; i++ ){
-    if (*kv){
-      AB[i*4] = 0;
-      AB[i*4+1] = -1;
-      AB[i*4+2] = 2;
-      AB[i*4+3] = -1;
+  int ii, jj, kk;
+  for (jj=0;jj<(*la);jj++){
+    kk = jj*(*lab);
+    if (*kv>=0){
+      for (ii=0;ii< *kv;ii++){
+        AB[kk+ii]=0.0;
+      }
     }
-    else {
-      AB[i*3] = -1;
-      AB[i*3+1] = 2;
-      AB[i*3+2] = -1;
-    }
+    AB[kk+ *kv]=-1.0;
+    AB[kk+ *kv+1]=2.0;
+    AB[kk+ *kv+2]=-1.0;
   }
-  AB[*kv] = 0;
-  AB[*la * (*lab - 1 + *kv) - 1] = 0;
+  AB[0]=0.0;
+  if (*kv == 1) {AB[1]=0;}
+  
+  AB[(*lab)*(*la)-1]=0.0;
 }
 
 void set_GB_operator_colMajor_poisson1D_Id(double* AB, int *lab, int *la, int *kv){
-  // TODO: Fill AB with the identity matrix
-  // Only the main diagonal should have 1, all other entries are 0
-  for (int i = 0; i < *la; i++ ){
-    if (*kv){
-      AB[i*4] = 0;
-      AB[i*4+1] = 0;
-      AB[i*4+2] = 1;
-      AB[i*4+3] = 0;
+  int ii, jj, kk;
+  for (jj=0;jj<(*la);jj++){
+    kk = jj*(*lab);
+    if (*kv>=0){
+      for (ii=0;ii< *kv;ii++){
+        AB[kk+ii]=0.0;
+      }
     }
-    else {
-      AB[i*3] = 0;
-      AB[i*3+1] = 1;
-      AB[i*3+2] = 0;
-    }
+    AB[kk+ *kv]=0.0;
+    AB[kk+ *kv+1]=1.0;
+    AB[kk+ *kv+2]=0.0;
   }
+  AB[1]=0.0;
+  AB[(*lab)*(*la)-1]=0.0;
 }
 
 void set_dense_RHS_DBC_1D(double* RHS, int* la, double* BC0, double* BC1){
-  // TODO: Compute RHS vector
-  double h = 1.0 / (*la + 1);
-  for (int i = 0; i < *la; i++) {
-    RHS[i] = 0.0;
+  int jj;
+  RHS[0]= *BC0;
+  RHS[(*la)-1]= *BC1;
+  for (jj=1;jj<(*la)-1;jj++){
+    RHS[jj]=0.0;
   }
-  RHS[0] = *BC0;
-  RHS[*la - 1] = *BC1;
 }  
 
 void set_analytical_solution_DBC_1D(double* EX_SOL, double* X, int* la, double* BC0, double* BC1){
-  // TODO: Compute the exact analytical solution at each grid point
-  // This depends on the source term f(x) used in set_dense_RHS_DBC_1D
-  double T0 = *BC0;
-  double T1 = *BC1;
-  for (int i = 0; i < *la; i++) {
-    EX_SOL[i] = T0 + X[i] * (T1 - T0);
+  int jj;
+  double h, DELTA_T;
+  DELTA_T=(*BC1)-(*BC0);
+  for (jj=0;jj<(*la);jj++){
+    EX_SOL[jj] = (*BC0) + X[jj]*DELTA_T;
   }
 }  
 
 void set_grid_points_1D(double* x, int* la){
-  // TODO: Generate uniformly spaced grid points in [0,1]
-  double h = 1.0 / (*la + 1);
-  for (int i = 0; i < *la; i++) {
-    x[i] = (i + 1) * h;
+  int jj;
+  double h;
+  h=1.0/(1.0*((*la)+1));
+  for (jj=0;jj<(*la);jj++){
+    x[jj]=(jj+1)*h;
   }
 }
 
 double relative_forward_error(double* x, double* y, int* la){
-  // TODO: Compute the relative error using BLAS functions (dnrm2, daxpy or manual loop)
-  double norm_num = 0.0;
-  double norm_den = 0.0;
-
-  for (int i = 0; i < *la; i++) {
-    norm_num += (x[i] - y[i]) * (x[i] - y[i]);
-    norm_den += x[i] * x[i];
-  }
-
-  norm_num = sqrt(norm_num);
-  norm_den = sqrt(norm_den);
-
-  return norm_num / norm_den;
+  double temp, relres;
+  temp = cblas_ddot(*la, x, 1, x,1);
+  temp = sqrt(temp);
+  cblas_daxpy(*la, -1.0, x, 1, y, 1);
+  relres = cblas_ddot(*la, y, 1, y,1);
+  relres = sqrt(relres);
+  relres = relres / temp;
+  return relres;
 }
 
 int indexABCol(int i, int j, int *lab){
-  // TODO: Return the correct index formula for column-major band storage
-  return i + j * (*lab);
+  return j*(*lab)+i;
 }
 
 int dgbtrftridiag(int *la, int*n, int *kl, int *ku, double *AB, int *lab, int *ipiv, int *info){
